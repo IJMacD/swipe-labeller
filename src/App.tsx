@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 
 interface ImageObject {
@@ -27,13 +27,14 @@ function App() {
       <h1>Swipe Labeller</h1>
       <CardStack
         cardCount={images.length}
-        renderChild={(index: number, className: string) => {
+        renderChild={(index: number, className: string, style: React.CSSProperties) => {
           const image = images[index];
           return (
             <Card
               key={image.id}
               image={image}
               className={className}
+              style={style}
             />
           );
         }}
@@ -47,7 +48,15 @@ function App() {
 
 export default App
 
-function CardStack ({ cardCount, renderChild, getDirection, labels, setLabel }: { cardCount: number, renderChild: (index: number, className: string) => React.ReactNode, getDirection: (index: number) => "down"|"left"|"right", labels: string[], setLabel: (index: number, label: string) => void }) {
+interface CardStackProps {
+  cardCount: number;
+  renderChild: (index: number, className: string, style: React.CSSProperties) => React.ReactNode;
+  getDirection: (index: number) => "down" | "left" | "right";
+  labels: string[];
+  setLabel: (index: number, label: string) => void;
+}
+
+function CardStack ({ cardCount, renderChild, getDirection, labels, setLabel }: CardStackProps) {
   const windowSize = 10;
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -105,10 +114,61 @@ function CardStack ({ cardCount, renderChild, getDirection, labels, setLabel }: 
     }
   }, [currentIndex, left, right]);
 
+  const [startX, setStartX] = useState(NaN);
+  const [currentX, setCurrentX] = useState(0);
+
+  const onEndRef = useRef(() => {})
+
+  useEffect(() => {
+    const cb_start = (e: TouchEvent) => {
+      setStartX(e.touches[0].screenX);
+      setCurrentX(e.touches[0].screenX);
+    }
+
+    document.addEventListener("touchstart", cb_start);
+
+    const cb_move = (e: TouchEvent) => {
+      setCurrentX(e.touches[0].screenX);
+    }
+
+    document.addEventListener("touchmove", cb_move);
+
+    const cb_end = () => {
+      onEndRef.current();
+      setStartX(NaN);
+    }
+
+    document.addEventListener("touchend", cb_end, false);
+    document.addEventListener("touchcancel", cb_end, false);
+
+    return () => {
+      document.removeEventListener("touchstart", cb_start);
+      document.removeEventListener("touchmove", cb_move);
+      document.removeEventListener("touchend", cb_end);
+      document.removeEventListener("touchcancel", cb_end);
+    }
+
+  }, []);
+
+  const dx = currentX - startX;
+
+  onEndRef.current = () => {
+    if (dx < -200) {
+      left();
+    }
+    else if (dx > 200) {
+      right();
+    }
+  };
+
   return (
     <div className="overflow-hidden m-5 h-[650px] relative mx-auto">
       {
-        slice.map((index, i) => renderChild(index, `${i >= windowSize - 2 ? "shadow-md" : ""} ${prevIndex === index && lastDirection ? `card-animation-${lastDirection}` : ""}`))
+        slice.map((index, i) => renderChild(
+          index,
+          `${i >= windowSize - 2 ? "shadow-md" : ""} ${prevIndex === index && lastDirection ? `card-animation-${lastDirection}` : ""}`,
+          index == currentIndex && !isNaN(dx) ? {transform: `translate(${dx}px, 0)`, transition: "none"} : {},
+        ))
       }
       {slice.length === 0 && <p>No more images</p>}
       <div className="absolute left-0 top-[40%] rounded size-32 bg-gray-300/50 p-4 text-gray-400 font-bold cursor-pointer select-none" onClick={left}>
@@ -123,10 +183,11 @@ function CardStack ({ cardCount, renderChild, getDirection, labels, setLabel }: 
   )
 }
 
-function Card ({ image, className = "" }: { image: ImageObject, className?: string }) {
+function Card ({ image, className = "", style }: { image: ImageObject, className?: string, style?: React.CSSProperties }) {
   return (
     <div
       className={`card w-[420px] h-[640px] absolute left-[50%] bg-white rounded border-1 border-gray-200 p-4 m-auto flex flex-col place-items-center justify-center ${className}`}
+      style={style}
     >
       <p>{image.id}</p>
       <img src={image.src} />
