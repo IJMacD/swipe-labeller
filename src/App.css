@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.card {
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  transition: transform 1s, opacity 1s;
+}
+
+.card-animation-right {
+  transform: translate(150%, 50%) rotate(90deg);
+  opacity: 0;
+}
+.card-animation-left {
+  transform: translate(-150%, 50%) rotate(-90deg);
+  opacity: 0;
+}
+.card-animation-down {
+  transform: scale(0.8) translate(0, 500px);
+  opacity: 0;
+}
